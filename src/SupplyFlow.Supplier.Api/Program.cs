@@ -1,14 +1,12 @@
-var builder = WebApplication.CreateBuilder(args);
+using SupplyFlow.Supplier.Infrastructure.Messaging;
 
-// Add services to the container.
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+builder.Services.AddMessaging(builder.Configuration);
+
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-
-app.UseAuthorization();
 
 app.MapControllers();
 

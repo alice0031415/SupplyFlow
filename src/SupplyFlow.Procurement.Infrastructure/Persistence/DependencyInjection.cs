@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SupplyFlow.Procurement.Application.DomainEvents;
 using SupplyFlow.Procurement.Application.Needs;
 using SupplyFlow.Procurement.Infrastructure.Persistence.Repositories;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
 
         services.AddScoped<INeedRepository, NeedRepository>();
+
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
 
         return services;
     }

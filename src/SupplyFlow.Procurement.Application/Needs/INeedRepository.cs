@@ -10,4 +10,11 @@ public interface INeedRepository
 
     Task<IReadOnlyList<NeedDto>> GetAllAsync(
         CancellationToken cancellationToken);
+
+    Task<Need?> GetByIdAsync(
+    Guid id,
+    CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(
+        CancellationToken cancellationToken);
 }

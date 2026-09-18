@@ -1,7 +1,11 @@
-﻿namespace SupplyFlow.Procurement.Domain.Needs;
+﻿using SupplyFlow.Procurement.Domain.Common;
+
+namespace SupplyFlow.Procurement.Domain.Needs;
 
 public class Need
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+
     private Need()
     {
     }
@@ -12,7 +16,9 @@ public class Need
         DateOnly requiredBy)
     {
         if (string.IsNullOrWhiteSpace(description))
-            throw new ArgumentException("Description is required.", nameof(description));
+            throw new ArgumentException(
+                "Description is required.",
+                nameof(description));
 
         if (quantity <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantity));
@@ -36,4 +42,24 @@ public class Need
 
     // PostgreSQL xmin — optimistic concurrency token.
     public uint Version { get; private set; }
+
+    public IReadOnlyCollection<IDomainEvent> DomainEvents =>
+        _domainEvents;
+
+    public void PublishTender()
+    {
+        if (Status != NeedStatus.Draft)
+            throw new InvalidOperationException(
+                "Only draft needs can be published.");
+
+        Status = NeedStatus.Published;
+
+        _domainEvents.Add(
+            new TenderPublishedDomainEvent(Id));
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
 }

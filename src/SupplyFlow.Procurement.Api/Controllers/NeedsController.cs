@@ -30,4 +30,18 @@ public sealed class NeedsController(ISender sender) : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/publish")]
+    public async Task<IActionResult> Publish(
+    Guid id,
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new PublishTenderCommand(id),
+            cancellationToken);
+
+        return result
+            ? NoContent()
+            : NotFound();
+    }
 }

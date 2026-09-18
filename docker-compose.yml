@@ -11,5 +11,15 @@ services:
     volumes:
       - supplyflow-postgres-data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:4.3-management
+    container_name: supplyflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: supplyflow
+      RABBITMQ_DEFAULT_PASS: supplyflow
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
 volumes:
   supplyflow-postgres-data:

@@ -3,9 +3,11 @@
   <ItemGroup>
     <ProjectReference Include="..\SupplyFlow.Procurement.Application\SupplyFlow.Procurement.Application.csproj" />
     <ProjectReference Include="..\SupplyFlow.Procurement.Domain\SupplyFlow.Procurement.Domain.csproj" />
+    <ProjectReference Include="..\SupplyFlow.Contracts\SupplyFlow.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
