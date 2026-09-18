@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SupplyFlow.Contracts/SupplyFlow.Contracts.csproj" />
+    <Project Path="src/SupplyFlow.Logistics.Api/SupplyFlow.Logistics.Api.csproj" />
+    <Project Path="src/SupplyFlow.Procurement.Api/SupplyFlow.Procurement.Api.csproj" />
+    <Project Path="src/SupplyFlow.Procurement.Application/SupplyFlow.Procurement.Application.csproj" />
+    <Project Path="src/SupplyFlow.Procurement.Domain/SupplyFlow.Procurement.Domain.csproj" />
+    <Project Path="src/SupplyFlow.Procurement.Infrastructure/SupplyFlow.Procurement.Infrastructure.csproj" />
+    <Project Path="src/SupplyFlow.Supplier.Api/SupplyFlow.Supplier.Api.csproj" />
+    <Project Path="src/SupplyFlow.Supplier.Application/SupplyFlow.Supplier.Application.csproj" />
+    <Project Path="src/SupplyFlow.Supplier.Domain/SupplyFlow.Supplier.Domain.csproj" />
+    <Project Path="src/SupplyFlow.Supplier.Infrastructure/SupplyFlow.Supplier.Infrastructure.csproj" />
+  </Folder>
+</Solution>

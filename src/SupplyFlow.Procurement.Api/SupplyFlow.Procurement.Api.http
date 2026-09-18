@@ -1,0 +1,6 @@
+@SupplyFlow.Procurement.Api_HostAddress = http://localhost:5189
+
+GET {{SupplyFlow.Procurement.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
