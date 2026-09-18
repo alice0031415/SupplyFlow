@@ -1,6 +1,8 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using SupplyFlow.Procurement.Application.Needs;
 using SupplyFlow.Procurement.Application.Needs.Commands;
+using SupplyFlow.Procurement.Application.Needs.Queries;
 
 namespace SupplyFlow.Procurement.Api.Controllers;
 
@@ -16,5 +18,16 @@ public sealed class NeedsController(ISender sender) : ControllerBase
         var id = await sender.Send(command, cancellationToken);
 
         return Created($"/api/needs/{id}", new { id });
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<NeedDto>>> GetAll(
+    CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetNeedsQuery(),
+            cancellationToken);
+
+        return Ok(result);
     }
 }
