@@ -1,0 +1,154 @@
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SupplyFlow.Contracts.Events;
+using SupplyFlow.Procurement.Infrastructure.Persistence;
+using Testcontainers.PostgreSql;
+using Testcontainers.RabbitMq;
+using Microsoft.Extensions.Hosting;
+
+namespace SupplyFlow.Tests.Integration;
+
+public sealed class OutboxRabbitMqTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres =
+        new PostgreSqlBuilder()
+            .WithImage("postgres:17-alpine")
+            .WithDatabase("supplyflow_test")
+            .WithUsername("supplyflow")
+            .WithPassword("supplyflow")
+            .Build();
+
+    private readonly RabbitMqContainer _rabbitMq =
+        new RabbitMqBuilder()
+            .WithImage("rabbitmq:4.3-management")
+            .WithUsername("supplyflow")
+            .WithPassword("supplyflow")
+            .Build();
+
+    private IHost? _host;
+
+    private static readonly TaskCompletionSource<
+        TenderPublishedIntegrationEvent> MessageReceived =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public async ValueTask InitializeAsync()
+    {
+        await _postgres.StartAsync();
+        await _rabbitMq.StartAsync();
+
+        _host = Microsoft.Extensions.Hosting.Host
+            .CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddDbContext<SupplyFlowDbContext>(
+                    options =>
+                        options.UseNpgsql(
+                            _postgres.GetConnectionString()));
+
+                services.AddMassTransit(x =>
+                {
+                    x.AddEntityFrameworkOutbox<
+                        SupplyFlowDbContext>(o =>
+                        {
+                            o.UsePostgres();
+                            o.UseBusOutbox();
+                        });
+
+                    x.AddConsumer<TestTenderConsumer>();
+
+                    x.UsingRabbitMq((context, cfg) =>
+                    {
+                        cfg.Host(
+                            _rabbitMq.Hostname,
+                            _rabbitMq.GetMappedPublicPort(5672),
+                            "/",
+                            h =>
+                            {
+                                h.Username("supplyflow");
+                                h.Password("supplyflow");
+                            });
+
+                        cfg.ReceiveEndpoint(
+                            "supplyflow-outbox-test",
+                            endpoint =>
+                            {
+                                endpoint.Consumer<TestTenderConsumer>();
+                            });
+                    });
+                });
+            })
+            .Build();
+
+        await _host.StartAsync();
+
+        await using var db =
+            _host.Services
+                .GetRequiredService<SupplyFlowDbContext>();
+
+        await db.Database.EnsureCreatedAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_host is not null)
+        {
+            await _host.StopAsync();
+            _host.Dispose();
+        }
+
+        await _rabbitMq.DisposeAsync();
+        await _postgres.DisposeAsync();
+
+        MessageReceived.TrySetCanceled();
+    }
+
+    [Fact]
+    public async Task Should_PublishThroughTransactionalOutbox()
+    {
+        var needId = Guid.NewGuid();
+
+        await using var scope =
+            _host!.Services.CreateAsyncScope();
+
+        var publishEndpoint =
+            scope.ServiceProvider
+                .GetRequiredService<IPublishEndpoint>();
+
+        await using var db =
+            scope.ServiceProvider
+                .GetRequiredService<SupplyFlowDbContext>();
+
+        await using var transaction =
+            await db.Database.BeginTransactionAsync();
+
+        await publishEndpoint.Publish(
+            new TenderPublishedIntegrationEvent
+            {
+                NeedId = needId,
+                PublishedAtUtc = DateTime.UtcNow,
+                CorrelationId = needId
+            });
+
+        await db.SaveChangesAsync();
+
+        await transaction.CommitAsync();
+
+        var message = await MessageReceived.Task
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(needId, message.NeedId);
+    }
+
+    private sealed class TestTenderConsumer
+        : IConsumer<TenderPublishedIntegrationEvent>
+    {
+        public Task Consume(
+            ConsumeContext<TenderPublishedIntegrationEvent> context)
+        {
+            MessageReceived.TrySetResult(context.Message);
+
+            return Task.CompletedTask;
+        }
+    }
+}
