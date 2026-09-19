@@ -1,4 +1,5 @@
-﻿using MassTransit;
+﻿using System.Collections.Concurrent;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SupplyFlow.Contracts.Events;
@@ -12,10 +13,28 @@ public sealed class TenderPublishedConsumer(
     ILogger<TenderPublishedConsumer> logger)
     : IConsumer<TenderPublishedIntegrationEvent>
 {
+    private static readonly ConcurrentDictionary<Guid, int> Attempts = [];
+
     public async Task Consume(
         ConsumeContext<TenderPublishedIntegrationEvent> context)
     {
         var message = context.Message;
+
+        var attempt = Attempts.AddOrUpdate(
+            message.NeedId,
+            1,
+            (_, current) => current + 1);
+
+        logger.LogInformation(
+            "Processing TenderPublished. NeedId={NeedId}, Attempt={Attempt}",
+            message.NeedId,
+            attempt);
+
+        if (attempt <= 3)
+        {
+            throw new InvalidOperationException(
+                $"Simulated transient failure. Attempt={attempt}");
+        }
 
         var alreadyReceived = await dbContext.ReceivedTenders
             .AnyAsync(
@@ -44,8 +63,7 @@ public sealed class TenderPublishedConsumer(
             context.CancellationToken);
 
         logger.LogInformation(
-            "Tender received and stored. NeedId={NeedId}, MessageId={MessageId}",
-            message.NeedId,
-            context.MessageId);
+            "Tender received and stored. NeedId={NeedId}",
+            message.NeedId);
     }
 }
