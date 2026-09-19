@@ -1,11 +1,11 @@
 ﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SupplyFlow.Contracts.Events;
 using SupplyFlow.Procurement.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
-using Microsoft.Extensions.Hosting;
 
 namespace SupplyFlow.Tests.Integration;
 
@@ -28,10 +28,6 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
 
     private IHost? _host;
 
-    private static readonly TaskCompletionSource<
-        TenderPublishedIntegrationEvent> MessageReceived =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -41,6 +37,8 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
             .CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
+                services.AddSingleton<MessageProbe>();
+
                 services.AddDbContext<SupplyFlowDbContext>(
                     options =>
                         options.UseNpgsql(
@@ -48,14 +46,14 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
 
                 services.AddMassTransit(x =>
                 {
+                    x.AddConsumer<TestTenderConsumer>();
+
                     x.AddEntityFrameworkOutbox<
                         SupplyFlowDbContext>(o =>
                         {
                             o.UsePostgres();
                             o.UseBusOutbox();
                         });
-
-                    x.AddConsumer<TestTenderConsumer>();
 
                     x.UsingRabbitMq((context, cfg) =>
                     {
@@ -73,7 +71,8 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
                             "supplyflow-outbox-test",
                             endpoint =>
                             {
-                                endpoint.Consumer<TestTenderConsumer>();
+                                endpoint.ConfigureConsumer<
+                                    TestTenderConsumer>(context);
                             });
                     });
                 });
@@ -99,12 +98,47 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
 
         await _rabbitMq.DisposeAsync();
         await _postgres.DisposeAsync();
-
-        MessageReceived.TrySetCanceled();
     }
 
     [Fact]
     public async Task Should_PublishThroughTransactionalOutbox()
+    {
+        var needId = Guid.NewGuid();
+
+        await using var scope =
+            _host!.Services.CreateAsyncScope();
+
+        var publishEndpoint =
+            scope.ServiceProvider
+                .GetRequiredService<IPublishEndpoint>();
+
+        await using var db =
+            scope.ServiceProvider
+                .GetRequiredService<SupplyFlowDbContext>();
+
+        await publishEndpoint.Publish(
+            new TenderPublishedIntegrationEvent
+            {
+                NeedId = needId,
+                PublishedAtUtc = DateTime.UtcNow,
+                CorrelationId = needId
+            });
+
+        await db.SaveChangesAsync();
+
+        var probe =
+            scope.ServiceProvider
+                .GetRequiredService<MessageProbe>();
+
+        var message = await probe.MessageReceived
+            .Task
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(needId, message.NeedId);
+    }
+
+    [Fact]
+    public async Task Should_NotDeliverMessage_WhenTransactionRolledBack()
     {
         var needId = Guid.NewGuid();
 
@@ -132,21 +166,35 @@ public sealed class OutboxRabbitMqTests : IAsyncLifetime
 
         await db.SaveChangesAsync();
 
-        await transaction.CommitAsync();
+        await transaction.RollbackAsync();
 
-        var message = await MessageReceived.Task
-            .WaitAsync(TimeSpan.FromSeconds(10));
+        var probe =
+            scope.ServiceProvider
+                .GetRequiredService<MessageProbe>();
 
-        Assert.Equal(needId, message.NeedId);
+        await Assert.ThrowsAsync<TimeoutException>(
+            async () =>
+                await probe.MessageReceived.Task
+                    .WaitAsync(TimeSpan.FromSeconds(2)));
     }
 
-    private sealed class TestTenderConsumer
+    private sealed class MessageProbe
+    {
+        public TaskCompletionSource<
+            TenderPublishedIntegrationEvent> MessageReceived
+        { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class TestTenderConsumer(
+        MessageProbe probe)
         : IConsumer<TenderPublishedIntegrationEvent>
     {
         public Task Consume(
             ConsumeContext<TenderPublishedIntegrationEvent> context)
         {
-            MessageReceived.TrySetResult(context.Message);
+            probe.MessageReceived.TrySetResult(
+                context.Message);
 
             return Task.CompletedTask;
         }
