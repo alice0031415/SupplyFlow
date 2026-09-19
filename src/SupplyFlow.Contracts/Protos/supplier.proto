@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option csharp_namespace = "SupplyFlow.Contracts.Grpc";
+
+package supplier;
+
+service SupplierDirectory {
+  rpc GetTenderStatus (GetTenderStatusRequest)
+      returns (GetTenderStatusResponse);
+}
+
+message GetTenderStatusRequest {
+  string need_id = 1;
+}
+
+message GetTenderStatusResponse {
+  string need_id = 1;
+  bool received = 2;
+  string received_at_utc = 3;
+}
