@@ -15,11 +15,19 @@ public sealed class SecureController : ControllerBase
         {
             message = "Authenticated",
             user = User.Identity?.Name,
-            claims = User.Claims.Select(x => new
-            {
-                x.Type,
-                x.Value
-            })
+            roles = User.Claims
+                .Where(x => x.Type == "roles")
+                .Select(x => x.Value)
+        });
+    }
+
+    [Authorize(Roles = "procurement")]
+    [HttpGet("procurement")]
+    public IActionResult GetProcurement()
+    {
+        return Ok(new
+        {
+            message = "Procurement role accepted."
         });
     }
 }

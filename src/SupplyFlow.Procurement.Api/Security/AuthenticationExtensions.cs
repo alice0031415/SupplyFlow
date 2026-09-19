@@ -39,7 +39,8 @@ public static class AuthenticationExtensions
                         ValidateIssuer = true,
                         ValidateAudience = true,
                         ValidAudience = audience,
-                        ValidateLifetime = true
+                        ValidateLifetime = true,
+                        RoleClaimType = "roles"
                     };
             });
 
