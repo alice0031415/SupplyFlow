@@ -18,7 +18,11 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Refit" Version="15.2.0" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="15.2.0" />
+    <PackageReference Include="Refit.Reflection" Version="15.2.0" />
   </ItemGroup>
 
   <PropertyGroup>
