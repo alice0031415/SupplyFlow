@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using SupplyFlow.Procurement.Domain.Needs;
 
 namespace SupplyFlow.Procurement.Infrastructure.Persistence;
@@ -10,6 +11,11 @@ public class SupplyFlowDbContext(
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(SupplyFlowDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(SupplyFlowDbContext).Assembly);
+
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
     }
 }

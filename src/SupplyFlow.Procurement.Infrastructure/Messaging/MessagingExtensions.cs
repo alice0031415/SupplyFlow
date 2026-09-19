@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SupplyFlow.Procurement.Application.Needs.Events;
+using SupplyFlow.Procurement.Infrastructure.Persistence;
 
 namespace SupplyFlow.Procurement.Infrastructure.Messaging;
 
@@ -19,6 +20,12 @@ public static class MessagingExtensions
 
         services.AddMassTransit(x =>
         {
+            x.AddEntityFrameworkOutbox<SupplyFlowDbContext>(o =>
+            {
+                o.UsePostgres();
+                o.UseBusOutbox();
+            });
+
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(host, "/", h =>

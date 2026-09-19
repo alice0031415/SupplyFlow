@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SupplyFlow.Procurement.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SupplyFlow.Procurement.Infrastructure.Persistence;
 namespace SupplyFlow.Procurement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SupplyFlowDbContext))]
-    partial class SupplyFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260919141531_AddMassTransitOutbox")]
+    partial class AddMassTransitOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

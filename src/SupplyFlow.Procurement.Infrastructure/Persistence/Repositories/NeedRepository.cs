@@ -13,11 +13,25 @@ public sealed class NeedRepository(
         Need need,
         CancellationToken cancellationToken)
     {
-        await dbContext.Needs.AddAsync(need, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.Needs.AddAsync(
+            need,
+            cancellationToken);
+
+        await SaveChangesAsync(cancellationToken);
     }
+
+    public Task<Need?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.Needs
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<NeedDto>> GetAllAsync(
-CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         return await dbContext.Needs
             .AsNoTracking()
@@ -31,14 +45,6 @@ CancellationToken cancellationToken)
             .ToListAsync(cancellationToken);
     }
 
-    public Task<Need?> GetByIdAsync(
-    Guid id,
-    CancellationToken cancellationToken)
-    {
-        return dbContext.Needs
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-    }
-
     public async Task SaveChangesAsync(
         CancellationToken cancellationToken)
     {
@@ -47,15 +53,19 @@ CancellationToken cancellationToken)
             .SelectMany(x => x.Entity.DomainEvents)
             .ToArray();
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (events.Length > 0)
+        {
+            await eventDispatcher.DispatchAsync(
+                events,
+                cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(
+            cancellationToken);
 
         foreach (var entry in dbContext.ChangeTracker.Entries<Need>())
         {
             entry.Entity.ClearDomainEvents();
         }
-
-        await eventDispatcher.DispatchAsync(
-            events,
-            cancellationToken);
     }
 }
