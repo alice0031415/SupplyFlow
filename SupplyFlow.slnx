@@ -11,4 +11,7 @@
     <Project Path="src/SupplyFlow.Supplier.Domain/SupplyFlow.Supplier.Domain.csproj" />
     <Project Path="src/SupplyFlow.Supplier.Infrastructure/SupplyFlow.Supplier.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SupplyFlow.Tests/SupplyFlow.Tests.csproj" />
+  </Folder>
 </Solution>
