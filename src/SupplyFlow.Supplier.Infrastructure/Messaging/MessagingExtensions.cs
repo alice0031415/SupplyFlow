@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SupplyFlow.Supplier.Infrastructure.Messaging.Consumers;
+using SupplyFlow.Supplier.Infrastructure.Persistence;
 
 namespace SupplyFlow.Supplier.Infrastructure.Messaging;
 
@@ -20,6 +21,17 @@ public static class MessagingExtensions
         services.AddMassTransit(x =>
         {
             x.AddConsumer<TenderPublishedConsumer>();
+
+            x.AddEntityFrameworkOutbox<SupplyFlowSupplierDbContext>(o =>
+            {
+                o.UsePostgres();
+            });
+
+            x.AddConfigureEndpointsCallback((context, _, endpoint) =>
+            {
+                endpoint.UseEntityFrameworkOutbox<
+                    SupplyFlowSupplierDbContext>(context);
+            });
 
             x.UsingRabbitMq((context, cfg) =>
             {

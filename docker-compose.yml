@@ -20,6 +20,19 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+      
+  postgres-supplier:
+    image: postgres:17-alpine
+    container_name: supplyflow-postgres-supplier
+    environment:
+      POSTGRES_DB: supplyflow_supplier
+      POSTGRES_USER: supplyflow
+      POSTGRES_PASSWORD: supplyflow
+    ports:
+      - "5434:5432"
+    volumes:
+      - supplyflow-postgres-supplier-data:/var/lib/postgresql/data
 
 volumes:
   supplyflow-postgres-data:
+  supplyflow-postgres-supplier-data:
