@@ -7,6 +7,7 @@ using SupplyFlow.Procurement.Infrastructure.Logistics;
 using SupplyFlow.Procurement.Infrastructure.Messaging;
 using SupplyFlow.Procurement.Infrastructure.Persistence;
 using SupplyFlow.Procurement.Infrastructure.Redis;
+using SupplyFlow.Procurement.Api.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddGrpcClients();
 builder.Services.AddLogisticsClient(builder.Configuration);
 builder.Services.AddRedis(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 builder.Services
     .AddHealthChecks()
@@ -38,6 +40,9 @@ builder.Services.AddProblemDetails();
 var app = builder.Build();
 
 app.UseExceptionHandler();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

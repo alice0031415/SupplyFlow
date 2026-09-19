@@ -60,6 +60,16 @@ services:
     container_name: supplyflow-grafana
     ports:
       - "3000:3000"
+      
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    container_name: supplyflow-keycloak
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
 
 volumes:
   supplyflow-postgres-data:
