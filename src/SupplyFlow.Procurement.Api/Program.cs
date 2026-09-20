@@ -21,7 +21,7 @@ builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
-builder.Services.AddGrpcClients();
+builder.Services.AddGrpcClients(builder.Configuration);
 builder.Services.AddLogisticsClient(builder.Configuration);
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);

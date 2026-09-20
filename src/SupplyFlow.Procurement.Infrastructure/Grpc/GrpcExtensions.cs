@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SupplyFlow.Contracts.Grpc;
 using SupplyFlow.Procurement.Application.Suppliers;
 
@@ -7,12 +8,18 @@ namespace SupplyFlow.Procurement.Infrastructure.Grpc;
 public static class GrpcExtensions
 {
     public static IServiceCollection AddGrpcClients(
-        this IServiceCollection services)
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddGrpcClient<SupplierDirectory.SupplierDirectoryClient>(
+        var supplierUrl =
+            configuration["Grpc:SupplierUrl"]
+            ?? "http://localhost:5002";
+
+        services.AddGrpcClient<
+            SupplierDirectory.SupplierDirectoryClient>(
             options =>
             {
-                options.Address = new Uri("http://localhost:5002");
+                options.Address = new Uri(supplierUrl);
             });
 
         services.AddScoped<ISupplierGateway, SupplierGateway>();

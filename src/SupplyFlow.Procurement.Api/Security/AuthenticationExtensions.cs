@@ -19,6 +19,9 @@ public static class AuthenticationExtensions
             ?? throw new InvalidOperationException(
                 "Authentication:Audience is not configured.");
 
+        var metadataAddress =
+            configuration["Authentication:MetadataAddress"];
+
         services
             .AddAuthentication(options =>
             {
@@ -31,6 +34,7 @@ public static class AuthenticationExtensions
             .AddJwtBearer(options =>
             {
                 options.Authority = authority;
+                options.MetadataAddress = metadataAddress;
                 options.RequireHttpsMetadata = false;
 
                 options.TokenValidationParameters =

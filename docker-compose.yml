@@ -1,4 +1,5 @@
 services:
+
   postgres:
     image: postgres:17-alpine
     container_name: supplyflow-postgres
@@ -10,17 +11,12 @@ services:
       - "5433:5432"
     volumes:
       - supplyflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supplyflow -d supplyflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  rabbitmq:
-    image: rabbitmq:4.3-management
-    container_name: supplyflow-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: supplyflow
-      RABBITMQ_DEFAULT_PASS: supplyflow
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-      
   postgres-supplier:
     image: postgres:17-alpine
     container_name: supplyflow-postgres-supplier
@@ -32,13 +28,52 @@ services:
       - "5434:5432"
     volumes:
       - supplyflow-postgres-supplier-data:/var/lib/postgresql/data
-      
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U supplyflow -d supplyflow_supplier"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4.3-management
+    container_name: supplyflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: supplyflow
+      RABBITMQ_DEFAULT_PASS: supplyflow
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:8.2.9-alpine
     container_name: supplyflow-redis
     ports:
       - "6379:6379"
-      
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    container_name: supplyflow-keycloak
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+
   jaeger:
     image: jaegertracing/jaeger:2.21.0
     container_name: supplyflow-jaeger
@@ -60,16 +95,91 @@ services:
     container_name: supplyflow-grafana
     ports:
       - "3000:3000"
-      
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.7.4
-    container_name: supplyflow-keycloak
-    command: start-dev
+
+  logistics-api:
+    build:
+      context: .
+      dockerfile: docker/Logistics.Dockerfile
+    container_name: supplyflow-logistics-api
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
     ports:
-      - "8080:8080"
+      - "5003:8080"
+
+  supplier-api:
+    build:
+      context: .
+      dockerfile: docker/Supplier.Dockerfile
+    container_name: supplyflow-supplier-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__SupplyFlowSupplier: >-
+        Host=postgres-supplier;
+        Port=5432;
+        Database=supplyflow_supplier;
+        Username=supplyflow;
+        Password=supplyflow
+
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: supplyflow
+      RabbitMQ__Password: supplyflow
+    ports:
+      - "5002:5002"
+    depends_on:
+      postgres-supplier:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  procurement-api:
+    build:
+      context: .
+      dockerfile: docker/Procurement.Dockerfile
+    container_name: supplyflow-procurement-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+
+      ConnectionStrings__SupplyFlow: >-
+        Host=postgres;
+        Port=5432;
+        Database=supplyflow;
+        Username=supplyflow;
+        Password=supplyflow
+
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: supplyflow
+      RabbitMQ__Password: supplyflow
+
+      Redis__ConnectionString: redis:6379
+
+      OpenTelemetry__OtlpEndpoint: http://jaeger:4317
+
+      Grpc__SupplierUrl: http://supplier-api:5002
+
+      Logistics__BaseAddress: http://logistics-api:8080
+
+      Authentication__Authority: http://localhost:8080/realms/supplyflow
+      Authentication__MetadataAddress: http://keycloak:8080/realms/supplyflow/.well-known/openid-configuration
+      Authentication__Audience: supplyflow-api
+
+    ports:
+      - "5189:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      supplier-api:
+        condition: service_started
+      logistics-api:
+        condition: service_started
+      keycloak:
+        condition: service_started
 
 volumes:
   supplyflow-postgres-data:
